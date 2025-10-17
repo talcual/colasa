@@ -1,9 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 from queue import Queue
 import threading
 import time
+import os
 
 app = Flask(__name__)
+CORS(app)
 
 # Cola compartida
 task_queue = Queue()
@@ -13,6 +16,11 @@ def process_task(task):
     print(f"Procesando tarea: {task}")
     time.sleep(2)  # simula tarea pesada
     print(f"Tarea completada: {task}")
+
+# Endpoint para servir el index.html en la raíz
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
 
 # Endpoint para agregar tareas a la cola
 @app.route('/enqueue', methods=['POST'])

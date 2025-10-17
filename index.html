@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Cola de Tareas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 25px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.secondary {
+            background: #28a745;
+        }
+
+        button.secondary:hover {
+            background: #218838;
+        }
+
+        button.tertiary {
+            background: #17a2b8;
+        }
+
+        button.tertiary:hover {
+            background: #138496;
+        }
+
+        .status-display {
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #667eea;
+            margin-top: 15px;
+        }
+
+        .status-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .status-label {
+            text-align: center;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .message {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .button-group button {
+            flex: 1;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Gestor de Cola de Tareas</h1>
+
+        <!-- Sección: Agregar Tarea -->
+        <div class="section">
+            <h2>➕ Agregar Nueva Tarea</h2>
+            <div class="input-group">
+                <input type="text" id="taskInput" placeholder="Ingrese la descripción de la tarea...">
+                <button onclick="enqueueTask()">Agregar</button>
+            </div>
+            <div id="enqueueMessage"></div>
+        </div>
+
+        <!-- Sección: Procesar Tarea -->
+        <div class="section">
+            <h2>⚙️ Procesar Tareas</h2>
+            <div class="button-group">
+                <button class="secondary" onclick="processTask()">Procesar Siguiente Tarea</button>
+            </div>
+            <div id="processMessage"></div>
+        </div>
+
+        <!-- Sección: Estado de la Cola -->
+        <div class="section">
+            <h2>📊 Estado de la Cola</h2>
+            <div class="button-group">
+                <button class="tertiary" onclick="checkStatus()">Actualizar Estado</button>
+            </div>
+            <div class="status-display">
+                <div class="status-number" id="queueSize">-</div>
+                <div class="status-label">Tareas Pendientes</div>
+            </div>
+            <div id="statusMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+
+        // Función para agregar una tarea a la cola
+        async function enqueueTask() {
+            const taskInput = document.getElementById('taskInput');
+            const task = taskInput.value.trim();
+            const messageDiv = document.getElementById('enqueueMessage');
+
+            if (!task) {
+                showMessage(messageDiv, 'Por favor ingrese una tarea', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/enqueue`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ task: task })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage(messageDiv, data.message, 'success');
+                    taskInput.value = '';
+                    // Actualizar automáticamente el estado
+                    checkStatus();
+                } else {
+                    showMessage(messageDiv, data.error || 'Error al agregar la tarea', 'error');
+                }
+            } catch (error) {
+                showMessage(messageDiv, `Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        // Función para procesar la siguiente tarea
+        async function processTask() {
+            const messageDiv = document.getElementById('processMessage');
+
+            try {
+                const response = await fetch(`${API_URL}/process`, {
+                    method: 'GET'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (response.status === 202) {
+                        showMessage(messageDiv, data.message, 'success');
+                    } else {
+                        showMessage(messageDiv, data.message, 'info');
+                    }
+                    // Actualizar automáticamente el estado
+                    setTimeout(checkStatus, 500);
+                } else {
+                    showMessage(messageDiv, data.error || 'Error al procesar la tarea', 'error');
+                }
+            } catch (error) {
+                showMessage(messageDiv, `Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        // Función para verificar el estado de la cola
+        async function checkStatus() {
+            const messageDiv = document.getElementById('statusMessage');
+            const queueSizeDiv = document.getElementById('queueSize');
+
+            try {
+                const response = await fetch(`${API_URL}/status`, {
+                    method: 'GET'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    queueSizeDiv.textContent = data.tareas_pendientes;
+                    showMessage(messageDiv, 'Estado actualizado correctamente', 'success');
+                } else {
+                    showMessage(messageDiv, 'Error al obtener el estado', 'error');
+                }
+            } catch (error) {
+                showMessage(messageDiv, `Error de conexión: ${error.message}`, 'error');
+                queueSizeDiv.textContent = '?';
+            }
+        }
+
+        // Función auxiliar para mostrar mensajes
+        function showMessage(element, message, type) {
+            element.innerHTML = `<div class="message ${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
+        // Permitir agregar tarea con Enter
+        document.getElementById('taskInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                enqueueTask();
+            }
+        });
+
+        // Cargar el estado inicial al cargar la página
+        window.addEventListener('load', checkStatus);
+    </script>
+</body>
+</html>
