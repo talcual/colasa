@@ -1,3 +1,3 @@
 
 
-web: gunicorn app:app
+web: gunicorn colas_http:app
